@@ -143,13 +143,15 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
 
     try {
       MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-      retriever.setDataSource(getCurrentReactContext(), path);
+      retriever.setDataSource(reactContext, path);
       Bitmap bmp = retriever.getFrameAtTime(0);
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       bmp.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
       byte[] byteArray = byteArrayOutputStream .toByteArray();
       String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
       sendEvent(THUMBNAIL_EVENT, currentId, encoded);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
   }
 
@@ -163,7 +165,7 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
     params.putInt("id", currentId);
     if(errorMessage != null) {
       if(eventName == THUMBNAIL_EVENT) {
-        params.putString("data", errorMessage);
+        params.putString("result", errorMessage);
       } else {
         params.putString("error", errorMessage);
       }
