@@ -16,9 +16,14 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
+import android.media.MediaMetadataRetriever;
+import android.graphics.Bitmap;
 
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import java.io.File;
+import java.io.ByteArrayOutputStream;
+import android.util.Base64;
+import java.lang.String;
 
 public class RNFileViewerModule extends ReactContextBaseJavaModule {
   private final ReactApplicationContext reactContext;
@@ -27,6 +32,7 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
   private static final String OPEN_EVENT = "RNFileViewerDidOpen";
   private static final String DISMISS_EVENT = "RNFileViewerDidDismiss";
   private static final Integer RN_FILE_VIEWER_REQUEST = 33341;
+  private static final String THUMBNAIL_EVENT = "RNThumbnailEvent";
 
   private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
     @Override
@@ -111,6 +117,42 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
       }
   }
 
+  @ReactMethod
+  public void getThumbnail(String path, Integer currentId) {
+    Uri contentUri = null;
+
+    if(path.startsWith("content://")) {
+      contentUri = Uri.parse(path);
+    } else {
+      File newFile = new File(path);
+      try {
+        final String packageName = getCurrentActivity().getPackageName();
+        final String authority = new StringBuilder(packageName).append(".provider").toString();
+        contentUri = FileProvider.getUriForFile(getCurrentActivity(), authority, newFile);
+      }
+      catch(IllegalArgumentException e) {
+        sendEvent(OPEN_EVENT, currentId, e.getMessage());
+        return;
+      }
+    }
+
+    if(contentUri == null) {
+      sendEvent(OPEN_EVENT, currentId, "Invalid file");
+      return;
+    }
+
+    try {
+      MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+      retriever.setDataSource(getCurrentReactContext(), path);
+      Bitmap bmp = retriever.getFrameAtTime(0);
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      bmp.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+      byte[] byteArray = byteArrayOutputStream .toByteArray();
+      String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+      sendEvent(THUMBNAIL_EVENT, currentId, encoded);
+    }
+  }
+
   @Override
   public String getName() {
     return "RNFileViewer";
@@ -120,7 +162,11 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
     WritableMap params = Arguments.createMap();
     params.putInt("id", currentId);
     if(errorMessage != null) {
-      params.putString("error", errorMessage);
+      if(eventName == THUMBNAIL_EVENT) {
+        params.putString("data", errorMessage);
+      } else {
+        params.putString("error", errorMessage);
+      }
     }
     reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
       .emit(eventName, params);

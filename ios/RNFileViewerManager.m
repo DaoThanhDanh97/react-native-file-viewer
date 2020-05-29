@@ -2,9 +2,12 @@
 #import "RNFileViewerManager.h"
 #import <QuickLook/QuickLook.h>
 #import <React/RCTConvert.h>
+#import <AVFoundation/AVFoundation.h>
+#import <UIKit/UIKit.h>
 
 #define OPEN_EVENT @"RNFileViewerDidOpen"
 #define DISMISS_EVENT @"RNFileViewerDidDismiss"
+#define THUMBNAIL_EVENT @"RNThumbnailEvent"
 
 @interface File: NSObject<QLPreviewItem>
 
@@ -106,7 +109,7 @@
 RCT_EXPORT_MODULE()
 
 - (NSArray<NSString *> *)supportedEvents {
-    return @[OPEN_EVENT, DISMISS_EVENT];
+    return @[OPEN_EVENT, DISMISS_EVENT, THUMBNAIL_EVENT];
 }
 
 RCT_EXPORT_METHOD(open:(NSString *)path invocation:(nonnull NSNumber *)invocationId
@@ -124,4 +127,16 @@ RCT_EXPORT_METHOD(open:(NSString *)path invocation:(nonnull NSNumber *)invocatio
     }];
 }
 
+
+RCT_EXPORT_METHOD(getThumbnail: (NSString*)path invocation: (nonnull NSNumber *) invocationId)
+{
+    AVURLAsset* asset = [AVURLAsset URLAssetWithURL:[NSURL fileURLWithPath:path] options: nil];
+    AVAssetImageGenerator* imageGenerator = [AVAssetImageGenerator assetImageGeneratorWithAsset:asset];
+    [imageGenerator setAppliesPreferredTrackTransform:TRUE];
+    UIImage* image = [UIImage imageWithCGImage:[imageGenerator copyCGImageAtTime:CMTimeMake(0, 1) actualTime:nil error:nil]];
+    NSData *imageData = UIImagePNGRepresentation(image);
+    NSString * base64String = [imageData base64EncodedStringWithOptions:0];
+    typeof(self) __weak weakSelf = self;
+    [weakSelf sendEventWithName:THUMBNAIL_EVENT body: @{@"id": invocationId, @"result": base64String }];
+}
 @end

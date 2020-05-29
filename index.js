@@ -40,6 +40,32 @@ function open(path, options = {}) {
   });
 }
 
+function getThumbnail(path) {
+  if (!["android", "ios"].includes(Platform.OS)) {
+    return RNFileViewer.getThumbnail(path, nativeOptions);
+  }
+
+  return new Promise((resolve, reject) => {
+    try {
+      const currentThumbnailId = ++lastId;
+
+      const thumbnailSubscription = eventEmitter.addListener(
+        "RNThumbnailEvent",
+        ({ id, result }) => {
+          if (id === lastId) {
+            thumbnailSubscription.remove();
+            return resolve(result);
+          }
+        }
+      );
+
+      RNFileViewer.getThumbnail(normalize(path), lastId);
+    } catch (error) {
+      return reject(error);
+    }
+  });
+}
+
 function normalize(path) {
   if (Platform.OS === "ios") {
     const filePrefix = "file://";
@@ -53,4 +79,4 @@ function normalize(path) {
   return path;
 }
 
-export default { open };
+export default { open, getThumbnail };
