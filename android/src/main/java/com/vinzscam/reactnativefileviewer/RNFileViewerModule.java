@@ -143,7 +143,7 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
 
     try {
       MediaMetadataRetriever retriever = new MediaMetadataRetriever();
-      retriever.setDataSource(reactContext, path);
+      retriever.setDataSource(reactContext, contentUri);
       Bitmap bmp = retriever.getFrameAtTime(0);
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       bmp.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
